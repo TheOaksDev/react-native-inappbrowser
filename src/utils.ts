@@ -114,9 +114,8 @@ export async function openBrowserAsync(
     enableBarCollapsing: false,
   }
 ): Promise<BrowserResult> {
-  return RNInAppBrowser.open({
+  return RNInAppBrowser.open(url, {
     ...options,
-    url,
     preferredBarTintColor:
       options.preferredBarTintColor &&
       processColor(options.preferredBarTintColor),
