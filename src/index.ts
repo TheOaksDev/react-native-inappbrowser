@@ -10,7 +10,7 @@ import type {
   BrowserResult,
   AuthSessionResult,
   InAppBrowserOptions,
-} from './types';
+} from "./types";
 import {
   isAndroid,
   RNInAppBrowser,
@@ -19,7 +19,7 @@ import {
   openAuthSessionPolyfillAsync,
   closeAuthSessionPolyfillAsync,
   authSessionIsNativelySupported,
-} from './utils';
+} from "./utils";
 
 /**
  * Opens the url with Safari in a modal on iOS using [`SFSafariViewController`](https://developer.apple.com/documentation/safariservices/sfsafariviewcontroller),

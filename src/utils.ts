@@ -3,30 +3,30 @@
  * @flow strict-local
  */
 
-import invariant from 'invariant';
+import invariant from "invariant";
 import {
   processColor,
   Linking,
   Platform,
   AppState,
   NativeModules,
-} from 'react-native';
+} from "react-native";
 import type {
   BrowserResult,
   RedirectEvent,
   RedirectResult,
   AuthSessionResult,
   InAppBrowserOptions,
-} from './types';
+} from "./types";
 
 export const RNInAppBrowser = NativeModules.RNInAppBrowser;
 
 type EmitterSubscription = {
-  remove(): void,
+  remove(): void;
 };
 
-let _redirectHandler: ?(event: RedirectEvent) => void;
-let _linkingEventSubscription: ?EmitterSubscription;
+let _redirectHandler: ((event: RedirectEvent) => void) | null | undefined;
+let _linkingEventSubscription: EmitterSubscription | null | undefined;
 // If the initial AppState.currentState is null, we assume that the first call to
 // AppState#change event is not actually triggered by a real change,
 // is triggered instead by the bridge capturing the current state
@@ -39,12 +39,12 @@ function waitForRedirectAsync(returnUrl: string): Promise<RedirectResult> {
   return new Promise(function (resolve) {
     _redirectHandler = (event: RedirectEvent) => {
       if (event.url && event.url.startsWith(returnUrl)) {
-        resolve({ url: event.url, type: 'success' });
+        resolve({ url: event.url, type: "success" });
       }
     };
 
     _linkingEventSubscription = Linking.addEventListener(
-      'url',
+      "url",
       _redirectHandler
     );
   });
@@ -55,7 +55,7 @@ function waitForRedirectAsync(returnUrl: string): Promise<RedirectResult> {
  */
 function handleAppStateActiveOnce(): Promise<void> {
   return new Promise(function (resolve) {
-    let appStateEventSubscription: ?EmitterSubscription;
+    let appStateEventSubscription: EmitterSubscription | null | undefined;
 
     function handleAppStateChange(nextAppState: AppStateStatus) {
       if (!_isAppStateAvailable) {
@@ -63,21 +63,23 @@ function handleAppStateActiveOnce(): Promise<void> {
         return;
       }
 
-      if (nextAppState === 'active') {
+      if (nextAppState === "active") {
         if (
           appStateEventSubscription &&
           appStateEventSubscription.remove !== undefined
         ) {
           appStateEventSubscription.remove();
         } else {
-          AppState.removeEventListener('change', handleAppStateChange);
+          // TODO: fix this to elegantly remove the listener
+          // Only solution is to remove all listeners at the moment
+          //AppState.removeEventListener("change", handleAppStateChange);
         }
         resolve();
       }
     }
 
     appStateEventSubscription = AppState.addEventListener(
-      'change',
+      "change",
       handleAppStateChange
     );
   });
@@ -87,11 +89,13 @@ async function checkResultAndReturnUrl(
   returnUrl: string,
   result: AuthSessionResult
 ): Promise<AuthSessionResult> {
-  if (Platform.OS === 'android' && result.type !== 'cancel') {
+  if (Platform.OS === "android" && result.type !== "cancel") {
     try {
       await handleAppStateActiveOnce();
       const url = await Linking.getInitialURL();
-      return url && url.startsWith(returnUrl) ? { url, type: 'success' } : result;
+      return url && url.startsWith(returnUrl)
+        ? { url, type: "success" }
+        : result;
     } catch {
       return result;
     }
@@ -102,10 +106,10 @@ async function checkResultAndReturnUrl(
 
 export async function openBrowserAsync(
   url: string,
-  options?: InAppBrowserOptions = {
+  options: InAppBrowserOptions = {
     animated: true,
     modalEnabled: true,
-    dismissButtonStyle: 'close',
+    dismissButtonStyle: "close",
     readerMode: false,
     enableBarCollapsing: false,
   }
@@ -125,7 +129,7 @@ export async function openBrowserAsync(
 export async function openAuthSessionAsync(
   url: string,
   redirectUrl: string,
-  options?: InAppBrowserOptions = {
+  options: InAppBrowserOptions = {
     ephemeralWebSession: false,
   }
 ): Promise<AuthSessionResult> {
@@ -139,7 +143,7 @@ export async function openAuthSessionPolyfillAsync(
 ): Promise<AuthSessionResult> {
   invariant(
     !_redirectHandler,
-    'InAppBrowser.openAuth is in a bad state. _redirectHandler is defined when it should not be.'
+    "InAppBrowser.openAuth is in a bad state. _redirectHandler is defined when it should not be."
   );
   try {
     return await Promise.race([
@@ -163,7 +167,9 @@ export function closeAuthSessionPolyfillAsync(): void {
       _linkingEventSubscription.remove();
       _linkingEventSubscription = null;
     } else {
-      Linking.removeEventListener('url', _redirectHandler);
+      // TODO: fix this to elegantly remove the listener
+      // Only solution is to remove all listeners at the moment
+      //Linking.removeEventListener("url", _redirectHandler);
     }
     _redirectHandler = null;
   }
@@ -171,12 +177,12 @@ export function closeAuthSessionPolyfillAsync(): void {
 
 /* iOS <= 10 and Android polyfill for SFAuthenticationSession flow */
 export function authSessionIsNativelySupported(): boolean {
-  if (Platform.OS === 'android') {
+  if (Platform.OS === "android") {
     return false;
   }
 
-  const versionNumber = parseInt(Platform.Version, 10);
+  const versionNumber = parseInt(Platform.Version as string, 10);
   return versionNumber >= 11;
 }
 
-export const isAndroid = Platform.OS === 'android';
+export const isAndroid = Platform.OS === "android";

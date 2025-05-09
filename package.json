@@ -2,13 +2,17 @@
   "name": "react-native-inappbrowser-reborn",
   "version": "3.7.0",
   "description": "InAppBrowser for React Native",
-  "main": "index.js",
+  "main": "./lib/commonjs/index.js",
   "scripts": {
     "flow": "flow check",
     "lint": "eslint index.js",
-    "postinstall": "opencollective-postinstall || true"
+    "typecheck": "tsc",
+    "build": "bob build",
+    "postinstall": "opencollective-postinstall || true",
+    "prepare": "bob build",
+    "generate-types": "tsc --emitDeclarationOnly"
   },
-  "typings": "./index.d.ts",
+  "typings": "./lib/typescript/commonjs/index.d.ts",
   "repository": {
     "type": "git",
     "url": "git@github.com:proyecto26/react-native-inappbrowser.git"
@@ -38,6 +42,14 @@
   "author": "Juan David Nicholls Cardona",
   "homepage": "https://github.com/proyecto26/react-native-inappbrowser",
   "license": "MIT",
+  "codegenConfig": {
+    "name": "RNInAppBrowserSpec",
+    "type": "modules",
+    "jsSrcsDir": "./src",
+    "android": {
+      "javaPackageName": "com.proyecto26.inappbrowser"
+    }
+  },
   "peerDependencies": {
     "react-native": ">=0.56"
   },
@@ -48,13 +60,67 @@
   "devDependencies": {
     "@babel/eslint-parser": "^7.18.9",
     "@react-native-community/eslint-config": "^3.0.3",
+    "@types/invariant": "^2.2.37",
+    "@types/react-native": "^0.72.8",
     "eslint": "^8.20.0",
     "flow-bin": "^0.183.1",
     "prettier": "^2.7.1",
-    "react-native": "^0.69.3"
+    "react-native": "0.75.5",
+    "react-native-builder-bob": "^0.30.3",
+    "typescript": "^5.6.3"
   },
   "collective": {
     "type": "opencollective",
     "url": "https://opencollective.com/proyecto26"
-  }
+  },
+  "source": "./src/index.js",
+  "module": "./lib/module/index.js",
+  "types": "./lib/typescript/commonjs/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./lib/typescript/module/index.d.ts",
+        "default": "./lib/module/index.js"
+      },
+      "require": {
+        "types": "./lib/typescript/commonjs/index.d.ts",
+        "default": "./lib/commonjs/index.js"
+      }
+    }
+  },
+  "files": [
+    "src",
+    "lib",
+    "!**/__tests__",
+    "!**/__fixtures__",
+    "!**/__mocks__"
+  ],
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      [
+        "commonjs",
+        {
+          "copyFlow": true
+        }
+      ],
+      [
+        "module",
+        {
+          "esm": true
+        }
+      ],
+      [
+        "typescript",
+        {
+          "esm": true
+        }
+      ]
+    ]
+  },
+  "eslintIgnore": [
+    "node_modules/",
+    "lib/"
+  ]
 }

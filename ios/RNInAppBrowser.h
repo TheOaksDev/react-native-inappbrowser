@@ -1,8 +1,16 @@
-#if __has_include(<React/RCTBridgeModule.h>) // React Native >= 0.40
-#import <React/RCTBridgeModule.h>
-#else // React Native < 0.40
-#import "RCTBridgeModule.h"
-#endif
+#import <React/RCTEventEmitter.h>
 
-@interface RNInAppBrowser : NSObject <RCTBridgeModule>
+#ifdef RCT_NEW_ARCH_ENABLED
+#import <RNInAppBrowserSpec/RNInAppBrowserSpec.h>
+
+@interface RNInAppBrowser : RCTEventEmitter <NativeRNInAppBrowserSpec>
 @end
+
+#else
+
+#import <React/RCTBridgeModule.h>
+
+@interface RNInAppBrowser : RCTEventEmitter <RCTBridgeModule>
+@end
+
+#endif

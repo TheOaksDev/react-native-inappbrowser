@@ -27,7 +27,9 @@
 
 NSString *RNInAppBrowserErrorCode = @"RNInAppBrowser";
 
-@implementation RNInAppBrowser
+@implementation RNInAppBrowser {
+  bool hasListeners;
+}
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wpartial-availability"
@@ -55,19 +57,51 @@ static BOOL animated;
   return NO;
 }
 
+- (void)startObserving {
+  hasListeners = YES;
+}
+
+- (void)stopObserving {
+  hasListeners = NO;
+}
+
+- (NSArray<NSString *> *)supportedEvents {
+  return @[@"inAppBrowserDidClose"];
+}
+
+- (void)handleOnClose {
+  safariVC = nil;
+  if (hasListeners) {
+    [self sendEventWithName:@"inAppBrowserDidClose" body:nil];
+  }
+}
+
 RCT_EXPORT_MODULE();
 
+#ifdef RCT_NEW_ARCH_ENABLED
+- (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:(const facebook::react::ObjCTurboModule::InitParams &)params {
+  return std::make_shared<facebook::react::NativeRNInAppBrowserSpecJSI>(params);
+}
+
+- (void)openAuth:(NSString *)authURL
+      redirectURL:(NSString *)redirectURL
+      options:(JS::NativeRNInAppBrowser::Options &)options
+      resolver:(RCTPromiseResolveBlock)resolve
+      rejecter:(RCTPromiseRejectBlock)reject {
+  BOOL ephemeralWebSession = options.ephemeralWebSession().has_value() ? options.ephemeralWebSession().value() : false;
+#else
 RCT_EXPORT_METHOD(openAuth:(NSString *)authURL
                   redirectURL:(NSString *)redirectURL
                   options:(NSDictionary *)options
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
+  BOOL ephemeralWebSession = [options[@"ephemeralWebSession"] boolValue];
+#endif
+
   if (![self initializeWebBrowserWithResolver:resolve andRejecter:reject]) {
     return;
   }
-
-  BOOL ephemeralWebSession = [options[@"ephemeralWebSession"] boolValue];
 
   if (@available(iOS 11, *)) {
     NSURL *url = [[NSURL alloc] initWithString:authURL];
@@ -121,7 +155,6 @@ RCT_EXPORT_METHOD(openAuth:(NSString *)authURL
 #if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && defined(__IPHONE_13_0) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_13_0
     if (@available(iOS 13.0, *)) {
       if (ephemeralWebSession) {
-        //Prevent re-use cookie from last auth session
         webAuthSession.prefersEphemeralWebBrowserSession = true;
       }
       webAuthSession.presentationContextProvider = self;
@@ -142,15 +175,26 @@ RCT_EXPORT_METHOD(openAuth:(NSString *)authURL
   }
 }
 
-
+#ifdef RCT_NEW_ARCH_ENABLED
+- (void)open:(JS::NativeRNInAppBrowser::Options &)options
+      resolver:(RCTPromiseResolveBlock)resolve
+      rejecter:(RCTPromiseRejectBlock)reject {
+  NSString* authURL = options.url();
+  NSString* dismissButtonStyle = options.dismissButtonStyle().has_value() ? options.dismissButtonStyle().value() : nil;
+  NSNumber* preferredBarTintColor = options.preferredBarTintColor().has_value() ? [NSNumber numberWithDouble:options.preferredBarTintColor().value()] : nil;
+  NSNumber* preferredControlTintColor = options.preferredControlTintColor().has_value() ? [NSNumber numberWithDouble:options.preferredControlTintColor().value()] : nil;
+  NSString* modalPresentationStyle = options.modalPresentationStyle().has_value() ? options.modalPresentationStyle().value() : nil;
+  NSString* modalTransitionStyle = options.modalTransitionStyle().has_value() ? options.modalTransitionStyle().value() : nil;
+  NSDictionary* formSheetPreferredContentSize = options.formSheetPreferredContentSize().has_value() ? options.formSheetPreferredContentSize().value() : nil;
+  BOOL readerMode = options.readerMode().has_value() ? options.readerMode().value() : false;
+  BOOL enableBarCollapsing = options.enableBarCollapsing().has_value() ? options.enableBarCollapsing().value() : false;
+  modalEnabled = options.modalEnabled().has_value() ? options.modalEnabled().value() : false;
+  animated = options.animated().has_value() ? options.animated().value() : false;
+#else
 RCT_EXPORT_METHOD(open:(NSDictionary *)options
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
-  if (![self initializeWebBrowserWithResolver:resolve andRejecter:reject]) {
-    return;
-  }
-
   NSString* authURL = [options valueForKey:@"url"];
   NSString* dismissButtonStyle = [options valueForKey:@"dismissButtonStyle"];
   NSNumber* preferredBarTintColor = [options valueForKey:@"preferredBarTintColor"];
@@ -158,14 +202,17 @@ RCT_EXPORT_METHOD(open:(NSDictionary *)options
   NSString* modalPresentationStyle = [options valueForKey:@"modalPresentationStyle"];
   NSString* modalTransitionStyle = [options valueForKey:@"modalTransitionStyle"];
   NSDictionary* formSheetPreferredContentSize = [options valueForKey:@"formSheetPreferredContentSize"];
-
   BOOL readerMode = [options[@"readerMode"] boolValue];
   BOOL enableBarCollapsing = [options[@"enableBarCollapsing"] boolValue];
   modalEnabled = [options[@"modalEnabled"] boolValue];
   animated = [options[@"animated"] boolValue];
+#endif
+
+  if (![self initializeWebBrowserWithResolver:resolve andRejecter:reject]) {
+    return;
+  }
 
   @try {
-    // Safari View Controller to authorize request
     NSURL *url = [[NSURL alloc] initWithString:authURL];
     if (@available(iOS 11.0, *)) {
       SFSafariViewControllerConfiguration *config = [[SFSafariViewControllerConfiguration alloc] init];
@@ -206,12 +253,9 @@ RCT_EXPORT_METHOD(open:(NSDictionary *)options
 
   UIViewController *ctrl = RCTPresentedViewController();
   if (modalEnabled) {
-    // This is a hack to present the SafariViewController modally
     UINavigationController *safariHackVC = [[UINavigationController alloc] initWithRootViewController:safariVC];
     [safariHackVC setNavigationBarHidden:true animated:false];
 
-    // To disable "Swipe to dismiss" gesture which sometimes causes a bug where `safariViewControllerDidFinish`
-    // is not called.
     safariVC.modalPresentationStyle = UIModalPresentationOverFullScreen;
     safariHackVC.modalPresentationStyle = [self getPresentationStyle: modalPresentationStyle];
     if(animated) {
@@ -269,11 +313,19 @@ RCT_EXPORT_METHOD(open:(NSDictionary *)options
   }];
 }
 
+#ifdef RCT_NEW_ARCH_ENABLED
+- (void)close {
+#else
 RCT_EXPORT_METHOD(close) {
+#endif
   [self _close];
 }
 
+#ifdef RCT_NEW_ARCH_ENABLED
+- (void)closeAuth {
+#else
 RCT_EXPORT_METHOD(closeAuth) {
+#endif
   if (@available(iOS 11, *)) {
     if (redirectResolve) {
       redirectResolve(@{
@@ -291,19 +343,19 @@ RCT_EXPORT_METHOD(closeAuth) {
   }
 }
 
+#ifdef RCT_NEW_ARCH_ENABLED
+- (void)isAvailable:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject {
+#else
 RCT_EXPORT_METHOD(isAvailable:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 {
+#endif
   if (@available(iOS 9.0, *)) {
-    // SafariView is available
     resolve(@YES);
   } else {
     resolve(@NO);
   }
 }
 
-/**
- * Helper that is used in open and openAuth
- */
 - (BOOL)initializeWebBrowserWithResolver:(RCTPromiseResolveBlock)resolve andRejecter:(RCTPromiseRejectBlock)reject {
   if (redirectResolve) {
     reject(RNInAppBrowserErrorCode, @"Another InAppBrowser is already being presented.", nil);
@@ -315,9 +367,6 @@ RCT_EXPORT_METHOD(isAvailable:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromi
   return YES;
 }
 
-/**
- * Called when the user dismisses the SFVC without logging in.
- */
 - (void)safariViewControllerDidFinish:(SFSafariViewController *)controller
 {
   if (redirectResolve) {
@@ -329,6 +378,10 @@ RCT_EXPORT_METHOD(isAvailable:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromi
   if (!animated) {
     [self dismissWithoutAnimation:controller];
   }
+}
+
+- (void)presentationControllerDidDismiss:(UIPresentationController *)controller {
+  [self handleOnClose];
 }
 
 -(void)flowDidFinish
