@@ -90,11 +90,14 @@ dependencies {
     // EventBus
     def eventbusVersion = safeExtGet('eventbus', safeExtGet('eventbus', '3.3.1'))
     implementation "org.greenrobot:eventbus:$eventbusVersion"
-    
+
     // AndroidX Browser
-    def androidXBrowserVersion = safeExtGet('androidXBrowserVersion', '1.4.0')
-    implementation "androidx.browser:browser:$androidXBrowserVersion"
-    implementation "androidx.core:core-ktx:1.9.0"
+    def androidXAnnotation = safeExtGet('androidXAnnotation', '1.3.0')
+    def androidXBrowser = safeExtGet('androidXBrowser', '1.4.0') // v1.9.0.alpha has ephemeralSession support
+    def androidXCore = safeExtGet('androidXCore', '1.9.0')
+    implementation "androidx.annotation:annotation:$androidXAnnotation"
+    implementation "androidx.browser:browser:$androidXBrowser"
+    implementation "androidx.core:core-ktx:$androidXCore"
     
     // Kotlin
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
