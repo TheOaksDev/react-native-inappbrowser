@@ -36,7 +36,7 @@ object RNInAppBrowserModuleImpl {
     private var customTabsClient: CustomTabsClient? = null
     private val animationIdentifierPattern = Pattern.compile("^.+:.+/")
 
-    fun open(reactContext: ReactApplicationContext, url: String, options: ReadableMap, promise: Promise) {
+    fun open(reactContext: ReactApplicationContext, options: ReadableMap, promise: Promise) {
         currentActivity = reactContext.currentActivity
         if (mOpenBrowserPromise != null) {
             val result = Arguments.createMap().apply {
@@ -54,6 +54,12 @@ object RNInAppBrowserModuleImpl {
             return
         }
 
+        val url = options.getString("url")
+        if (url == null) {
+            mOpenBrowserPromise?.reject(ERROR_CODE, "No URL provided")
+            mOpenBrowserPromise = null
+            return
+        }
         val builder = CustomTabsIntent.Builder()
         isLightTheme = false
         val toolbarColor = setColor(builder, options, "toolbarColor", "setToolbarColor", "toolbar")

@@ -16,7 +16,7 @@ export interface Spec extends TurboModule {
     message?: string;
   }>;
 
-  open(options: {
+  open(options?: {
     url: string;
     dismissButtonStyle?: 'done' | 'close' | 'cancel';
     preferredBarTintColor?: number;

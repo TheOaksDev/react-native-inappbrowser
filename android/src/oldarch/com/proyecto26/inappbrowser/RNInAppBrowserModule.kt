@@ -37,8 +37,8 @@ class RNInAppBrowserModule(reactContext: ReactApplicationContext) :
     override fun onHostDestroy() {}
 
     @ReactMethod
-    fun open(url: String, options: ReadableMap, promise: Promise) {
-        RNInAppBrowserModuleImpl.open(reactApplicationContext, url, options, promise)
+    fun open(options: ReadableMap, promise: Promise) {
+        RNInAppBrowserModuleImpl.open(reactApplicationContext, options, promise)
     }
 
     @ReactMethod
